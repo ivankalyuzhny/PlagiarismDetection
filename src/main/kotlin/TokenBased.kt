@@ -9,4 +9,14 @@ class TokenBased : Approach {
 
         return score.toDouble() / pattern.count()
     }
+
+    fun getMatchList(tokenSequence1: List<Tok>, tokenSequence2: List<Tok>): List<Match> {
+        var pattern = tokenSequence1
+        var text = tokenSequence2
+        if (pattern.count() > text.count())
+            pattern = text.also { text = pattern }
+        val minMatchLength = 5
+
+        return RabinKarp().getMatchList(pattern, text, minMatchLength)
+    }
 }

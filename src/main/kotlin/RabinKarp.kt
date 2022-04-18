@@ -4,7 +4,7 @@ import kotlin.collections.HashMap
 
 class RabinKarp {
     private var matches = mutableMapOf<Int, PriorityQueue<Pair<Int, Int>>>()
-    private var listMatches = emptyList<Match>()
+    private var matchList = emptyList<Match>()
     private val names = KotlinParser.tokenNames
 
     fun computeTiledTokensLength(pattern: List<Tok>, text: List<Tok>, minMatchLength: Int): Int {
@@ -25,8 +25,7 @@ class RabinKarp {
                     searchLength = minMatchLength
                 } else if (searchLength > 3 && getTiledTokensLength(pattern) > pattern.count() - minMatchLength) {
                     searchLength--
-                }
-                else {
+                } else {
                     stop = true
                 }
             }
@@ -35,7 +34,35 @@ class RabinKarp {
         return getTiledTokensLength(pattern)
     }
 
-    private fun markArrays(pattern: List<Tok>, text: List<Tok>, searchLength: Int) {
+    fun getMatchList(pattern: List<Tok>, text: List<Tok>, minMatchLength: Int): List<Match> {
+        matchList = emptyList()
+        var searchLength = 20
+        var stop = false
+        var lMax: Int
+        while (!stop) {
+            lMax = scanPattern(pattern, text, searchLength)
+            if (lMax > 2 * searchLength) {
+                searchLength = lMax
+            } else {
+                markArrays(pattern, text, searchLength, true)
+                if (searchLength > 2 * minMatchLength) {
+                    searchLength /= 2
+                } else if (searchLength > minMatchLength) {
+                    searchLength = minMatchLength
+                } else if (searchLength > minMatchLength) {
+                    searchLength = minMatchLength
+                } else if (searchLength > 3 && getTiledTokensLength(pattern) > pattern.count() - minMatchLength) {
+                    searchLength--
+                } else {
+                    stop = true
+                }
+            }
+        }
+
+        return matchList
+    }
+
+    private fun markArrays(pattern: List<Tok>, text: List<Tok>, searchLength: Int, getMatchList: Boolean = false) {
         matches.keys.sortedDescending().forEach { key ->
             // while not empty
             while (!matches.getValue(key).isEmpty()) {
@@ -62,13 +89,24 @@ class RabinKarp {
                         pattern[patternStartMatch + k].isMarked = true
                         text[textStartMatch + k].isMarked = true
                     }
-                    listMatches = listMatches + Match(pattern[patternStartMatch].position, text[textStartMatch].position, pattern[patternStartMatch + key - 1].position, text[textStartMatch + key - 1].position)
+                    if (getMatchList){
+                        matchList = matchList + Match(
+                            pattern[patternStartMatch].position,
+                            text[textStartMatch].position,
+                            pattern[patternStartMatch + key - 1].position,
+                            text[textStartMatch + key - 1].position
+                        )
+                    }
                 } else {
                     if (firstOccluded >= searchLength) {
                         recordMatch(patternStartMatch, textStartMatch, firstOccluded)
                     }
                     if (key - 1 - lastOccluded >= searchLength) {
-                        recordMatch(patternStartMatch + lastOccluded + 1, textStartMatch + lastOccluded + 1, key - 1 - lastOccluded)
+                        recordMatch(
+                            patternStartMatch + lastOccluded + 1,
+                            textStartMatch + lastOccluded + 1,
+                            key - 1 - lastOccluded
+                        )
                     }
                 }
             }
@@ -163,11 +201,11 @@ class RabinKarp {
         matches.getOrPut(s) { PriorityQueue<Pair<Int, Int>>(Comparator.comparingInt { it.first }) }.add(p to t)
     }
 
-    private fun getTiledTokensLength(tokenSequence: List<Tok>): Int{
+    private fun getTiledTokensLength(tokenSequence: List<Tok>): Int {
         return tokenSequence.count { it.isMarked }
     }
 
-    fun printTokens(tokenSequence: List<Tok>, start: Int, s: Int) {
+    fun printTokens(tokenSequence: List<Tok>, start: Int = 0, s: Int = tokenSequence.count()) {
         var i = start
         while (i < start + s) {
             print(tokenSequence[i].str + " ")
