@@ -1,3 +1,3 @@
 interface Approach {
-    fun computeScore(string1: String, string2: String): Double
+    fun computeScore(tokenSequence1: List<Tok>, tokenSequence2: List<Tok>): Double
 }

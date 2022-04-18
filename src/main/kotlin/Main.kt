@@ -3,18 +3,18 @@ import java.io.File
 import java.io.InputStream
 import java.nio.file.Paths
 
-fun getTokens(path: String): String {
+fun getTokens(path: String): List<Tok> {
     val lexer = KotlinLexer(CharStreams.fromFileName(path))
     val tokens: TokenStream = CommonTokenStream(lexer)
     val parser = KotlinParser(tokens)
     parser.kotlinFile()
-    var listTokens = emptyList<String>()
+    var listTokens = emptyList<Tok>()
     for (i in 0 until tokens.size()) {
-        val lexerRule: String = lexer.getVocabulary().getSymbolicName(tokens[i].type)
-        if (lexerRule != "NL") //skipping NewLine tokens (for beauty)
-            listTokens += lexerRule
+        val token = Tok(lexer.vocabulary.getSymbolicName(tokens[i].type), tokens[i].tokenIndex)
+        if (token.str != "NL")
+            listTokens += token
     }
-    return listTokens.joinToString(" ")
+    return listTokens
 }
 
 fun sortTokens(src: String): String {
@@ -22,15 +22,11 @@ fun sortTokens(src: String): String {
         .replace("LineComment", "")
 }
 
-fun prepareData(string1: String): String {
-    return string1.replace(Regex("//(\\S) "), "").replace(Regex("\\s\\s+"), " ")
-}
-
 fun main(args: Array<String>) {
-    val string1 = prepareData(sortTokens(getTokens("C:\\Users\\ivank\\OneDrive\\Рабочий стол\\НИР\\AntlrTest\\src\\main\\kotlin\\test1.kt")))
-    val string2 = prepareData(sortTokens(getTokens("C:\\Users\\ivank\\OneDrive\\Рабочий стол\\НИР\\AntlrTest\\src\\main\\kotlin\\test2.kt")))
+    val tokenSequence1 = getTokens("C:\\Users\\ivank\\OneDrive\\Рабочий стол\\НИР\\AntlrTest\\src\\main\\kotlin\\test1.kt")
+    val tokenSequence2 = getTokens("C:\\Users\\ivank\\OneDrive\\Рабочий стол\\НИР\\AntlrTest\\src\\main\\kotlin\\test2.kt")
 
     val x: Approach = TokenBased()
 
-    println("""Score(string1 | string2): ${x.computeScore(string1, string2)}""")
+    println("""Score(string1 | string2): ${x.computeScore(tokenSequence1, tokenSequence2)}""")
 }

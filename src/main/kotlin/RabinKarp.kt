@@ -4,56 +4,52 @@ import kotlin.collections.HashMap
 
 class RabinKarp {
     private var matches = mutableMapOf<Int, PriorityQueue<Pair<Int, Int>>>()
-
+    private var listMatches = emptyList<Match>()
     private val names = KotlinParser.tokenNames
 
-    fun computeTiledTokensLength(pat: List<Tok>, txt: List<Tok>, minMatchLength: Int): Int {
-        var s = 20
+    fun computeTiledTokensLength(pattern: List<Tok>, text: List<Tok>, minMatchLength: Int): Int {
+        var searchLength = 20
         var stop = false
         var lMax: Int
         while (!stop) {
-            lMax = scanPattern(pat, txt, s)
-            if (lMax > 2 * s) {
-                s = lMax
+            lMax = scanPattern(pattern, text, searchLength)
+            if (lMax > 2 * searchLength) {
+                searchLength = lMax
             } else {
-                markArrays(pat, txt, s)
-                if (s > 2 * minMatchLength) {
-                    s /= 2
-                } else if (s > minMatchLength) {
-                    s = minMatchLength
-                } else {
+                markArrays(pattern, text, searchLength)
+                if (searchLength > 2 * minMatchLength) {
+                    searchLength /= 2
+                } else if (searchLength > minMatchLength) {
+                    searchLength = minMatchLength
+                } else if (searchLength > minMatchLength) {
+                    searchLength = minMatchLength
+                } else if (searchLength > 3 && getTiledTokensLength(pattern) > pattern.count() - minMatchLength) {
+                    searchLength--
+                }
+                else {
                     stop = true
                 }
             }
         }
 
-        var tiledTokensLength = 0
-        var p = 0
-        while (p < pat.count()) {
-            if (pat[p].isMarked) {
-                tiledTokensLength++
-            }
-            p++
-        }
-
-        return tiledTokensLength
+        return getTiledTokensLength(pattern)
     }
 
-    fun markArrays(pat: List<Tok>, txt: List<Tok>, s: Int) {
+    private fun markArrays(pattern: List<Tok>, text: List<Tok>, searchLength: Int) {
         matches.keys.sortedDescending().forEach { key ->
             // while not empty
             while (!matches.getValue(key).isEmpty()) {
                 val match = matches.getValue(key).remove()
-                val patStart = match.first
-                val txtStart = match.second
+                val patternStartMatch = match.first
+                val textStartMatch = match.second
                 //println(key)
                 var firstOccluded = -1
                 var lastOccluded = key
                 for (j in 0 until key) {
-                    if (firstOccluded == -1 && (pat[patStart + j].isMarked or txt[txtStart + j].isMarked)) {
+                    if (firstOccluded == -1 && (pattern[patternStartMatch + j].isMarked or text[textStartMatch + j].isMarked)) {
                         firstOccluded = j
                     }
-                    if (lastOccluded == -1 && (pat[patStart + key - j - 1].isMarked or txt[txtStart + key - j - 1].isMarked)) {
+                    if (lastOccluded == -1 && (pattern[patternStartMatch + key - j - 1].isMarked or text[textStartMatch + key - j - 1].isMarked)) {
                         lastOccluded = key - j - 1
                     }
                     if (firstOccluded != -1 && lastOccluded != -1) {
@@ -63,15 +59,16 @@ class RabinKarp {
 
                 if (firstOccluded == -1 && lastOccluded == key) {
                     for (k in 0 until key) {
-                        pat[patStart + k].isMarked = true
-                        txt[txtStart + k].isMarked = true
+                        pattern[patternStartMatch + k].isMarked = true
+                        text[textStartMatch + k].isMarked = true
                     }
+                    listMatches = listMatches + Match(pattern[patternStartMatch].position, text[textStartMatch].position, pattern[patternStartMatch + key - 1].position, text[textStartMatch + key - 1].position)
                 } else {
-                    if (firstOccluded >= s) {
-                        recordMatch(patStart, txtStart, firstOccluded)
+                    if (firstOccluded >= searchLength) {
+                        recordMatch(patternStartMatch, textStartMatch, firstOccluded)
                     }
-                    if (key - 1 - lastOccluded >= s) {
-                        recordMatch(patStart + lastOccluded + 1, txtStart + lastOccluded + 1, key - 1 - lastOccluded)
+                    if (key - 1 - lastOccluded >= searchLength) {
+                        recordMatch(patternStartMatch + lastOccluded + 1, textStartMatch + lastOccluded + 1, key - 1 - lastOccluded)
                     }
                 }
             }
@@ -84,23 +81,21 @@ class RabinKarp {
         }
     }
 
-    fun scanPattern(pat: List<Tok>, txt: List<Tok>, s: Int): Int {
+    private fun scanPattern(pattern: List<Tok>, text: List<Tok>, searchLength: Int): Int {
         val hashTable = HashMap<Int, Int>()
-        var start: Int
+        var maxMatchLength = searchLength
 
-        var maxMatchLength = s
-
-        start = 0
-        while (start < txt.count()) {
-            if (!txt[start].isMarked) {
+        var start = 0
+        while (start < text.count()) {
+            if (!text[start].isMarked) {
                 var t = start
                 var distance = 0
-                while ((t + distance < txt.count()) && (!txt[t + distance].isMarked)) distance++
-                if (distance < s) {
+                while ((t + distance < text.count()) && (!text[t + distance].isMarked)) distance++
+                if (distance < searchLength) {
                     start += distance
                 } else {
-                    while (t < start + distance - s + 1) {
-                        hashTable[t] = getHash(txt, t, s)
+                    while (t < start + distance - searchLength + 1) {
+                        hashTable[t] = getHash(text, t, searchLength)
                         t++
                     }
                     start += distance
@@ -111,36 +106,33 @@ class RabinKarp {
         }
 
         start = 0
-        while (start < pat.count()) {
-            //println(hashTable.count())
-            if (!pat[start].isMarked) {
+        while (start < pattern.count()) {
+            if (!pattern[start].isMarked) {
                 var p = start
                 var distance = 0
-                while ((p + distance < pat.count()) && (!pat[p + distance].isMarked)) distance++
-                if (distance < s) {
+                while ((p + distance < pattern.count()) && (!pattern[p + distance].isMarked)) distance++
+                if (distance < searchLength) {
                     start += distance
                 } else {
-                    while (p < start + distance - s + 1) {
-                        val hash = getHash(pat, p, s)
+                    while (p < start + distance - searchLength + 1) {
+                        val hash = getHash(pattern, p, searchLength)
 
-                        hashTable.filter { it -> it.value == hash }.forEach {
+                        hashTable.filter { it.value == hash }.forEach {
                             //printTokens(txt, it.key, s)
                             var isEqual = true
                             var j = 0
-                            while (j < s - 1 && isEqual) {
-                                isEqual = pat[p + j].str == txt[it.key + j].str
+                            while (j < searchLength - 1 && isEqual) {
+                                isEqual = pattern[p + j].str == text[it.key + j].str
                                 j++
                             }
                             if (isEqual) {
-
-                                var k = s
-                                while ((p + k < pat.count() && it.key + k < txt.count()) && !pat[p + k].isMarked && !txt[it.key + k].isMarked && (pat[p + k].str == txt[it.key + k].str)) k++
-                                if (k > 2 * s) {
-                                    //println("k = $k")
+                                var k = searchLength
+                                while ((p + k < pattern.count() && it.key + k < text.count()) && !pattern[p + k].isMarked && !text[it.key + k].isMarked && (pattern[p + k].str == text[it.key + k].str)) k++
+                                if (k > 2 * searchLength) {
                                     return (k)
                                 } else {
                                     if (k > maxMatchLength) maxMatchLength = k
-                                    recordMatch(p, it.key, k) // k instead s
+                                    recordMatch(p, it.key, k)
                                 }
                             }
                         }
@@ -153,31 +145,32 @@ class RabinKarp {
             }
         }
 
-        //println("maxMatchLength = $maxMatchLength")
         return maxMatchLength
     }
 
-    fun getHash(seq: List<Tok>, start: Int, s: Int): Int {
+    private fun getHash(tokenSequence: List<Tok>, start: Int, s: Int): Int {
         var hash = 0
         var t = start
         while (t < start + s) {
-            hash = ((hash + names.indexOf(seq[t].str) % 101) * 256) % 101
-            //hash+= names.indexOf(seq[t].str)
+            hash = ((hash + names.indexOf(tokenSequence[t].str) % 101) * 256) % 101
             t++
         }
 
         return hash
     }
 
-    fun recordMatch(p: Int, t: Int, s: Int) {
+    private fun recordMatch(p: Int, t: Int, s: Int) {
         matches.getOrPut(s) { PriorityQueue<Pair<Int, Int>>(Comparator.comparingInt { it.first }) }.add(p to t)
-        //matches[s]?.let { println(it.count()) }
     }
 
-    fun printTokens(seq: List<Tok>, start: Int, s: Int) {
+    private fun getTiledTokensLength(tokenSequence: List<Tok>): Int{
+        return tokenSequence.count { it.isMarked }
+    }
+
+    fun printTokens(tokenSequence: List<Tok>, start: Int, s: Int) {
         var i = start
         while (i < start + s) {
-            print(seq[i].str + " ")
+            print(tokenSequence[i].str + " ")
             i++
         }
         println()

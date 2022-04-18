@@ -1,0 +1,1 @@
+class Match constructor(val patternStart: Int, val textStart: Int, val patternEnd: Int, val textEnd: Int)
