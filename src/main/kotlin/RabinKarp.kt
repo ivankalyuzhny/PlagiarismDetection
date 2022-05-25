@@ -156,7 +156,6 @@ class RabinKarp {
                         val hash = getHash(pattern, p, searchLength)
 
                         hashTable.filter { it.value == hash }.forEach {
-                            //printTokens(txt, it.key, s)
                             var isEqual = true
                             var j = 0
                             while (j < searchLength - 1 && isEqual) {
