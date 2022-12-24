@@ -1,35 +1,52 @@
-class TextBased : Approach {
-    fun getTokenList(str: String): List<Tok> {
-        var tokenList: MutableList<Tok> = arrayListOf()
-        val strArr = str.split(" ")
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.TokenStream
 
-        for (i in 1..strArr.count()) {
-            tokenList.add(Tok(strArr[i - 1]))
+class TextBased : Approach {
+    fun getTokens(string: String): List<Tok> {
+        val lexer = KotlinLexer(CharStreams.fromString(string))
+        val tokens: TokenStream = CommonTokenStream(lexer)
+        val parser = KotlinParser(tokens)
+        parser.kotlinFile()
+        var listTokens = emptyList<Tok>()
+        for (i in 0 until tokens.size()) {
+            val token = Tok(lexer.vocabulary.getSymbolicName(tokens[i].type), tokens[i].tokenIndex)
+            if (token.str != "NL")
+                listTokens += token
         }
-        return tokenList
+        return listTokens
+    }
+
+    fun printTokens(tokenSequence: List<Tok>, start: Int = 0, s: Int = tokenSequence.count()) {
+        var i = start
+        while (i < start + s) {
+            print(tokenSequence[i].str + " ")
+            i++
+        }
+        println()
     }
 
     override fun computeScore(string1: String, string2: String): Double {
-        var tokenSequence1 = getTokenList(string1)
-        var tokenSequence2 = getTokenList(string2)
+        var pattern = getTokens(string1)
+        var text = getTokens(string2)
 
-        if (tokenSequence1.count() > tokenSequence2.count()) {
-            tokenSequence1 = tokenSequence2.also { tokenSequence2 = tokenSequence1 }
+        if (pattern.count() > text.count()) {
+            pattern = text.also { text = pattern }
         }
-
+        //swap
         var dist: Int
-        var min = tokenSequence2.count()
+        var min = text.count()
 
-        for (i in 1..tokenSequence2.count()) {
+        for (i in 1..text.count()) {
             dist = LevenshteinDistance().computeLevenshteinDistance(
-                tokenSequence1,
-                tokenSequence2.takeLast(tokenSequence2.count() - i + 1).plus(tokenSequence2.take(i - 1))
+                pattern,
+                text.takeLast(text.count() - i + 1).plus(text.take(i - 1))
             )
             if (dist < min) {
                 min = dist
             }
         }
 
-        return 1 - min.toDouble() / tokenSequence2.count().toDouble()
+        return 1 - (min - (text.count() - pattern.count())).toDouble() / text.count().toDouble()
     }
 }

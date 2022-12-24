@@ -1,34 +1,49 @@
-class TokenBased : Approach {
-    fun getTokenList(str: String): List<Tok> {
-        var tokenList: MutableList<Tok> = arrayListOf()
-        val strArr = str.split(" ")
+import org.antlr.v4.runtime.CharStreams
+import org.antlr.v4.runtime.CommonTokenStream
+import org.antlr.v4.runtime.TokenStream
 
-        for (i in 1..strArr.count()) {
-            tokenList.add(Tok(strArr[i - 1]))
+class TokenBased : Approach {
+    fun getTokens(string: String): List<Tok> {
+        val lexer = KotlinLexer(CharStreams.fromString(string))
+        val tokens: TokenStream = CommonTokenStream(lexer)
+        val parser = KotlinParser(tokens)
+        parser.kotlinFile()
+        var listTokens = emptyList<Tok>()
+        for (i in 0 until tokens.size()) {
+            val token = Tok(lexer.vocabulary.getSymbolicName(tokens[i].type), tokens[i].tokenIndex)
+            if (token.str != "NL")
+                listTokens += token
         }
-        return tokenList
+        return listTokens
+    }
+
+    fun printTokens(tokenSequence: List<Tok>, start: Int = 0, s: Int = tokenSequence.count()) {
+        var i = start
+        while (i < start + s) {
+            print(tokenSequence[i].str + " ")
+            i++
+        }
+        println()
     }
 
     override fun computeScore(string1: String, string2: String): Double {
-        var tokenSequence1 = getTokenList(string1)
-        var tokenSequence2 = getTokenList(string2)
-        if (tokenSequence1.count() > tokenSequence2.count())
-            tokenSequence1 = tokenSequence2.also { tokenSequence2 = tokenSequence1 }
+        var pattern = getTokens(string1)
+        var text = getTokens(string2)
+        if (pattern.count() > text.count())
+            pattern = text.also { text = pattern }
         val minMatchLength = 5
-        val score = RabinKarp().computeTiledTokensLength(tokenSequence1, tokenSequence2, minMatchLength)
+        val score = RabinKarp().computeTiledTokensLength(pattern, text, minMatchLength)
 
-        /*return if (score > tokenSequence1.count() - minMatchLength) {
-            1.0
-        } else {
-            score.toDouble() / tokenSequence1.count()
-        }*/
+        return score.toDouble() / pattern.count()
+    }
 
-        /*return if (score > tokenSequence1.count() - minMatchLength) {
-            (score + RabinKarp().computeTiledTokensLength(tokenSequence1, tokenSequence2, minMatchLength / 2)).toDouble() / 2 / tokenSequence1.count()
-        } else {
-            score.toDouble() / tokenSequence1.count()
-        }*/
+    fun getMatchList(string1: String, string2: String): List<Match> {
+        var pattern = getTokens(string1)
+        var text = getTokens(string2)
+        if (pattern.count() > text.count())
+            pattern = text.also { text = pattern }
+        val minMatchLength = 5
 
-        return score.toDouble() / tokenSequence1.count()
+        return RabinKarp().getMatchList(pattern, text, minMatchLength)
     }
 }

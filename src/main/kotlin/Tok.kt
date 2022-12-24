@@ -1,0 +1,1 @@
+class Tok constructor(val str: String, val position: Int = 0, var isMarked: Boolean = false)
